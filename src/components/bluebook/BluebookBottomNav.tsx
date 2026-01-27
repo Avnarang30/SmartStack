@@ -21,39 +21,45 @@ export function BluebookBottomNav({
   canGoForward,
 }: BluebookBottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-bluebook-navy border-t border-bluebook-navy-light z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-bluebook-navy z-50">
       <div className="flex items-center justify-between px-4 py-3">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={onPrevious}
-          disabled={!canGoBack}
-          className="gap-2 text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <ChevronLeft className="h-5 w-5" />
-          <span className="hidden sm:inline">Back</span>
-        </Button>
+        {/* Left: Empty for balance */}
+        <div className="w-24" />
 
         {/* Center: Question Menu Button */}
         <Button
           variant="outline"
           onClick={onOpenQuestionMenu}
-          className="gap-2 bg-transparent border-bluebook-gray/40 text-white hover:bg-white/10 hover:border-white/50"
+          className="gap-2 bg-transparent border-gray-500 text-white hover:bg-white/10 hover:text-white hover:border-gray-400"
         >
           <Grid3X3 className="h-4 w-4" />
-          Question {currentQuestion} of {totalQuestions}
+          <span className="text-sm">Question {currentQuestion} of {totalQuestions}</span>
         </Button>
 
-        {/* Next Button */}
-        <Button
-          variant="ghost"
-          onClick={onNext}
-          disabled={!canGoForward}
-          className="gap-2 text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="h-5 w-5" />
-        </Button>
+        {/* Right: Navigation Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onPrevious}
+            disabled={!canGoBack}
+            className="gap-1 text-white hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">Back</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onNext}
+            disabled={!canGoForward}
+            className="gap-1 text-white hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:text-white"
+          >
+            <span className="hidden sm:inline text-sm">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </nav>
   );

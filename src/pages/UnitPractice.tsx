@@ -101,11 +101,11 @@ export default function UnitPractice() {
 
   if (!unit || !subject) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Unit not found</h1>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-lg shadow-sm">
+          <h1 className="text-xl font-semibold text-gray-900 mb-4">Unit not found</h1>
           <Link to="/subjects">
-            <Button>Back to Subjects</Button>
+            <Button className="bg-bluebook-blue hover:bg-bluebook-blue/90">Back to Subjects</Button>
           </Link>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function UnitPractice() {
 
   if (unitQuestions.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-100 flex flex-col">
         <BluebookHeader
           subjectTitle={subject.shortTitle}
           unitTitle={unit.title}
@@ -124,13 +124,13 @@ export default function UnitPractice() {
           onToggleMarkReview={() => {}}
           onShowDirections={() => {}}
         />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-muted-foreground mb-4">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center bg-white p-8 rounded-lg shadow-sm">
+            <p className="text-gray-600 mb-4">
               No questions available for this unit yet.
             </p>
             <Link to={`/subjects/${subject.id}`}>
-              <Button variant="outline">Back to Units</Button>
+              <Button variant="outline" className="border-gray-300">Back to Units</Button>
             </Link>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function UnitPractice() {
   const activeQuestion = unitQuestions[questionIndex];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Bluebook Header */}
       <BluebookHeader
         subjectTitle={subject.shortTitle}
@@ -153,12 +153,12 @@ export default function UnitPractice() {
         onShowDirections={() => setIsDirectionsOpen(true)}
       />
 
-      {/* Back Link (subtle) */}
-      <div className="border-b bg-muted/30">
+      {/* Subtle Exit Link */}
+      <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-2">
           <Link 
             to={`/subjects/${subject.id}`} 
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
           >
             <ChevronLeft className="h-3 w-3" />
             Exit to {subject.shortTitle}
@@ -166,14 +166,18 @@ export default function UnitPractice() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 container mx-auto px-4 py-6 pb-24">
-        <BluebookQuestionCard
-          question={activeQuestion}
-          questionNumber={questionIndex + 1}
-          onAIHelp={handleAIHelp}
-          onAnswered={handleAnswered}
-        />
+      {/* Main Content Area - Gray Background */}
+      <main className="flex-1 py-6 pb-24">
+        <div className="container mx-auto px-4">
+          <div key={activeQuestion.id} className="animate-fade-in">
+            <BluebookQuestionCard
+              question={activeQuestion}
+              questionNumber={questionIndex + 1}
+              onAIHelp={handleAIHelp}
+              onAnswered={handleAnswered}
+            />
+          </div>
+        </div>
       </main>
 
       {/* Bottom Navigation */}

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, X, Lightbulb, Sparkles } from 'lucide-react';
+import { Check, X, Lightbulb, Sparkles, Strikethrough } from 'lucide-react';
 import type { Question } from '@/data/subjects';
 
 interface BluebookQuestionCardProps {
@@ -25,6 +25,14 @@ export function BluebookQuestionCard({
   const [eliminatedChoices, setEliminatedChoices] = useState<Set<number>>(new Set());
   const [eliminatorMode, setEliminatorMode] = useState(false);
 
+  // Reset state when question changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setHasChecked(false);
+    setEliminatedChoices(new Set());
+    setEliminatorMode(false);
+  }, [question.id]);
+
   const isCorrect = selectedAnswer === question.correctAnswer;
 
   const handleChoiceClick = (index: number) => {
@@ -33,14 +41,9 @@ export function BluebookQuestionCard({
     if (eliminatorMode) {
       toggleEliminated(index);
     } else {
-      setSelectedAnswer(index);
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    if (!hasChecked) {
-      toggleEliminated(index);
+      if (!eliminatedChoices.has(index)) {
+        setSelectedAnswer(index);
+      }
     }
   };
 
@@ -51,7 +54,6 @@ export function BluebookQuestionCard({
         newSet.delete(index);
       } else {
         newSet.add(index);
-        // Deselect if eliminated
         if (selectedAnswer === index) {
           setSelectedAnswer(null);
         }
@@ -67,215 +69,199 @@ export function BluebookQuestionCard({
     }
   };
 
-  const handleReset = useCallback(() => {
-    setSelectedAnswer(null);
-    setHasChecked(false);
-    setEliminatedChoices(new Set());
-  }, []);
-
-  const getChoiceStyle = (index: number) => {
-    const isSelected = selectedAnswer === index;
-    const isCorrectAnswer = index === question.correctAnswer;
-    const isEliminated = eliminatedChoices.has(index);
-
-    if (hasChecked) {
-      if (isCorrectAnswer) {
-        return 'border-green-500 bg-green-50 dark:bg-green-900/20';
-      }
-      if (isSelected && !isCorrectAnswer) {
-        return 'border-red-500 bg-red-50 dark:bg-red-900/20';
-      }
-      return 'border-border opacity-50';
-    }
-
-    if (isEliminated) {
-      return 'border-border opacity-40';
-    }
-
-    if (isSelected) {
-      return 'border-bluebook-blue bg-bluebook-blue/10';
-    }
-
-    return 'border-border hover:border-bluebook-blue/50 hover:bg-muted/50';
-  };
-
-  const getChoiceLabelStyle = (index: number) => {
-    const isSelected = selectedAnswer === index;
-    const isCorrectAnswer = index === question.correctAnswer;
-
-    if (hasChecked) {
-      if (isCorrectAnswer) {
-        return 'bg-green-500 text-white';
-      }
-      if (isSelected && !isCorrectAnswer) {
-        return 'bg-red-500 text-white';
-      }
-      return 'bg-muted text-muted-foreground';
-    }
-
-    if (isSelected) {
-      return 'bg-bluebook-blue text-white';
-    }
-
-    return 'bg-muted text-foreground';
-  };
-
   return (
-    <div className={`flex flex-col lg:flex-row gap-6 ${showPassage ? 'lg:divide-x lg:divide-border' : ''}`}>
+    <div className={`flex flex-col lg:flex-row gap-8 ${showPassage ? 'lg:divide-x lg:divide-border' : ''}`}>
       {/* Passage Column (if applicable) */}
       {showPassage && passage && (
-        <div className="lg:w-1/2 lg:pr-6">
-          <div className="bg-muted/30 rounded-lg p-6 h-full overflow-y-auto max-h-[60vh]">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wide text-muted-foreground">
+        <div className="lg:w-1/2 lg:pr-8">
+          <div className="bg-white rounded-lg border border-gray-200 p-6 h-full overflow-y-auto max-h-[70vh] shadow-sm">
+            <h3 className="font-semibold mb-4 text-xs uppercase tracking-widest text-gray-500">
               Passage
             </h3>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="whitespace-pre-wrap leading-relaxed">{passage}</p>
+            <div className="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+              <p className="whitespace-pre-wrap">{passage}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Question Column */}
-      <div className={`${showPassage && passage ? 'lg:w-1/2 lg:pl-6' : 'w-full max-w-3xl mx-auto'}`}>
-        {/* Question Number & Text */}
-        <div className="mb-6">
-          <div className="text-sm font-medium text-muted-foreground mb-2">
-            Question {questionNumber}
-          </div>
-          <p className="text-lg leading-relaxed">{question.text}</p>
-        </div>
-
-        {/* Eliminator Toggle */}
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant={eliminatorMode ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setEliminatorMode(!eliminatorMode)}
-            className="text-xs gap-1.5"
-          >
-            <span className={eliminatorMode ? 'line-through' : ''}>ABC</span>
-            Eliminator {eliminatorMode ? 'On' : 'Off'}
-          </Button>
-          
-          {eliminatedChoices.size > 0 && !hasChecked && (
+      <div className={`${showPassage && passage ? 'lg:w-1/2 lg:pl-8' : 'w-full max-w-3xl mx-auto'}`}>
+        {/* Question Card */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          {/* Question Header with Eliminator Toggle */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-600">
+              Question {questionNumber}
+            </span>
             <Button
-              variant="ghost"
+              variant={eliminatorMode ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setEliminatedChoices(new Set())}
-              className="text-xs text-muted-foreground"
+              onClick={() => setEliminatorMode(!eliminatorMode)}
+              className={`gap-2 text-xs ${
+                eliminatorMode 
+                  ? 'bg-bluebook-navy hover:bg-bluebook-navy-light text-white' 
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
             >
-              Clear eliminated
+              <Strikethrough className="h-3.5 w-3.5" />
+              Strikethrough
             </Button>
-          )}
-        </div>
+          </div>
 
-        {/* Answer Choices */}
-        <div className="space-y-3 mb-6">
-          {question.choices.map((choice, index) => {
-            const isEliminated = eliminatedChoices.has(index);
-            const isSelected = selectedAnswer === index;
-            const isCorrectAnswer = index === question.correctAnswer;
+          {/* Question Text */}
+          <div className="px-6 py-5">
+            <p className="text-base leading-relaxed text-gray-900">{question.text}</p>
+          </div>
 
-            return (
-              <button
-                key={index}
-                onClick={() => handleChoiceClick(index)}
-                onContextMenu={(e) => handleContextMenu(e, index)}
-                disabled={hasChecked || (eliminatorMode && isEliminated)}
-                className={`
-                  w-full p-4 rounded-lg border-2 text-left transition-all duration-200
-                  ${getChoiceStyle(index)}
-                  ${!hasChecked && !isEliminated ? 'cursor-pointer' : ''}
-                  ${isEliminated && !hasChecked ? 'cursor-pointer' : ''}
-                `}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`
-                      w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0
-                      ${getChoiceLabelStyle(index)}
-                    `}
-                  >
-                    {hasChecked && isCorrectAnswer ? (
-                      <Check className="h-4 w-4" />
-                    ) : hasChecked && isSelected && !isCorrectAnswer ? (
-                      <X className="h-4 w-4" />
-                    ) : (
-                      String.fromCharCode(65 + index)
-                    )}
+          {/* Answer Choices */}
+          <div className="px-6 pb-6 space-y-3">
+            {question.choices.map((choice, index) => {
+              const isEliminated = eliminatedChoices.has(index);
+              const isSelected = selectedAnswer === index;
+              const isCorrectAnswer = index === question.correctAnswer;
+
+              // Determine styling based on state
+              let containerStyle = 'border-gray-200 bg-white hover:border-gray-300';
+              let circleStyle = 'border-gray-300 bg-white text-gray-700';
+              
+              if (hasChecked) {
+                if (isCorrectAnswer) {
+                  containerStyle = 'border-green-500 bg-green-50';
+                  circleStyle = 'border-green-500 bg-green-500 text-white';
+                } else if (isSelected && !isCorrectAnswer) {
+                  containerStyle = 'border-red-500 bg-red-50';
+                  circleStyle = 'border-red-500 bg-red-500 text-white';
+                } else {
+                  containerStyle = 'border-gray-200 bg-gray-50 opacity-60';
+                  circleStyle = 'border-gray-300 bg-gray-100 text-gray-400';
+                }
+              } else if (isSelected) {
+                containerStyle = 'border-bluebook-blue border-2 bg-blue-50';
+                circleStyle = 'border-bluebook-blue bg-bluebook-blue text-white';
+              } else if (isEliminated) {
+                containerStyle = 'border-gray-200 bg-gray-50 opacity-40';
+                circleStyle = 'border-gray-300 bg-gray-100 text-gray-400';
+              }
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleChoiceClick(index)}
+                  disabled={hasChecked}
+                  className={`
+                    w-full p-4 rounded-lg border text-left transition-all duration-150
+                    ${containerStyle}
+                    ${!hasChecked && !isEliminated ? 'cursor-pointer' : ''}
+                    ${eliminatorMode && !hasChecked ? 'cursor-crosshair' : ''}
+                  `}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Choice Circle */}
+                    <div
+                      className={`
+                        w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0
+                        border-2 transition-all duration-150
+                        ${circleStyle}
+                      `}
+                    >
+                      {hasChecked && isCorrectAnswer ? (
+                        <Check className="h-4 w-4" />
+                      ) : hasChecked && isSelected && !isCorrectAnswer ? (
+                        <X className="h-4 w-4" />
+                      ) : (
+                        String.fromCharCode(65 + index)
+                      )}
+                    </div>
+                    
+                    {/* Choice Text */}
+                    <span 
+                      className={`
+                        pt-1.5 text-sm leading-relaxed
+                        ${isEliminated ? 'line-through text-gray-400' : 'text-gray-800'}
+                      `}
+                    >
+                      {choice}
+                    </span>
                   </div>
-                  <span className={`pt-1 ${isEliminated ? 'line-through text-muted-foreground' : ''}`}>
-                    {choice}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-3">
-          {!hasChecked ? (
-            <Button
-              onClick={handleCheckAnswer}
-              disabled={selectedAnswer === null}
-              className="bg-bluebook-blue hover:bg-bluebook-blue/90 text-white"
-            >
-              Check Answer
-            </Button>
-          ) : (
-            <Button onClick={handleReset} variant="outline">
-              Try Again
-            </Button>
-          )}
+          {/* Action Bar */}
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
+            <div className="flex items-center gap-3">
+              {!hasChecked ? (
+                <Button
+                  onClick={handleCheckAnswer}
+                  disabled={selectedAnswer === null}
+                  className="bg-bluebook-blue hover:bg-bluebook-blue/90 text-white font-medium px-6"
+                >
+                  Check Answer
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setSelectedAnswer(null);
+                    setHasChecked(false);
+                    setEliminatedChoices(new Set());
+                  }}
+                  variant="outline"
+                  className="border-gray-300"
+                >
+                  Try Again
+                </Button>
+              )}
 
-          <Button
-            variant="outline"
-            onClick={() => onAIHelp?.(question)}
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            AI Help
-          </Button>
+              <Button
+                variant="ghost"
+                onClick={() => onAIHelp?.(question)}
+                className="gap-2 text-gray-600 hover:text-gray-900"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Help
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Explanation (only after checking) */}
         {hasChecked && (
-          <div className="mt-6 animate-fade-in">
+          <div className="mt-4 animate-fade-in">
             {/* Result Banner */}
             <div
-              className={`p-4 rounded-lg mb-4 ${
+              className={`p-4 rounded-lg border ${
                 isCorrect
-                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
               }`}
             >
               <div className="flex items-center gap-2">
                 {isCorrect ? (
-                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
                 ) : (
-                  <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                    <X className="h-4 w-4 text-white" />
+                  </div>
                 )}
-                <span
-                  className={`font-medium ${
-                    isCorrect
-                      ? 'text-green-700 dark:text-green-300'
-                      : 'text-red-700 dark:text-red-300'
-                  }`}
-                >
+                <span className={`font-semibold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                   {isCorrect ? 'Correct!' : 'Incorrect'}
                 </span>
               </div>
             </div>
 
             {/* Explanation Box */}
-            <div className="p-4 rounded-lg bg-muted/50 border border-border">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="h-4 w-4 text-amber-500" />
-                <h4 className="font-semibold text-sm">Explanation</h4>
+            <div className="mt-3 p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+                </div>
+                <h4 className="font-semibold text-sm text-gray-900">Explanation</h4>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed">
                 {question.explanation}
               </p>
             </div>
