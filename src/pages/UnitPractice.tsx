@@ -1,27 +1,29 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
-import { QuestionCard } from '@/components/QuestionCard';
+import { BluebookHeader } from '@/components/bluebook/BluebookHeader';
+import { BluebookBottomNav } from '@/components/bluebook/BluebookBottomNav';
+import { BluebookQuestionCard } from '@/components/bluebook/BluebookQuestionCard';
+import { QuestionGridModal } from '@/components/bluebook/QuestionGridModal';
+import { DirectionsModal } from '@/components/bluebook/DirectionsModal';
 import { AITutorModal } from '@/components/AITutorModal';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ProgressBar } from '@/components/ProgressBar';
 import { subjects, sampleQuestions, type Question } from '@/data/subjects';
-import { ChevronLeft, Filter, Shuffle } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ChevronLeft } from 'lucide-react';
+
+interface QuestionState {
+  answered: boolean;
+  correct?: boolean;
+  markedForReview: boolean;
+}
 
 export default function UnitPractice() {
   const { unitId } = useParams();
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | undefined>();
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isQuestionMenuOpen, setIsQuestionMenuOpen] = useState(false);
+  const [isDirectionsOpen, setIsDirectionsOpen] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | undefined>();
+  const [questionStates, setQuestionStates] = useState<Map<number, QuestionState>>(new Map());
 
   // Find the unit and its subject
   let unit = null;
@@ -35,11 +37,72 @@ export default function UnitPractice() {
     }
   }
 
+  // Filter questions based on unit
+  const unitQuestions = useMemo(() => {
+    if (!subject) return [];
+    return sampleQuestions.filter(q => 
+      q.unitId === unitId || q.unitId.startsWith(subject.id.split('-')[1].slice(0, 4))
+    );
+  }, [unitId, subject]);
+
+  // Build question statuses for the grid
+  const questionStatuses = useMemo(() => {
+    return unitQuestions.map((_, index) => {
+      const state = questionStates.get(index);
+      return {
+        answered: state?.answered ?? false,
+        correct: state?.correct,
+        markedForReview: state?.markedForReview ?? false,
+      };
+    });
+  }, [unitQuestions, questionStates]);
+
+  const currentQuestionState = questionStates.get(questionIndex);
+  const isMarkedForReview = currentQuestionState?.markedForReview ?? false;
+
+  const toggleMarkForReview = () => {
+    setQuestionStates(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(questionIndex) ?? { answered: false, markedForReview: false };
+      newMap.set(questionIndex, { ...current, markedForReview: !current.markedForReview });
+      return newMap;
+    });
+  };
+
+  const handleAnswered = (correct: boolean) => {
+    setQuestionStates(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(questionIndex) ?? { answered: false, markedForReview: false };
+      newMap.set(questionIndex, { ...current, answered: true, correct });
+      return newMap;
+    });
+  };
+
+  const handleAIHelp = (question: Question) => {
+    setCurrentQuestion(question);
+    setIsAIModalOpen(true);
+  };
+
+  const handlePrevious = () => {
+    if (questionIndex > 0) {
+      setQuestionIndex(questionIndex - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (questionIndex < unitQuestions.length - 1) {
+      setQuestionIndex(questionIndex + 1);
+    }
+  };
+
+  const handleSelectQuestion = (index: number) => {
+    setQuestionIndex(index);
+  };
+
   if (!unit || !subject) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8 text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Unit not found</h1>
           <Link to="/subjects">
             <Button>Back to Subjects</Button>
@@ -49,125 +112,103 @@ export default function UnitPractice() {
     );
   }
 
-  // Filter questions based on unit (using sample questions for demo)
-  const unitQuestions = sampleQuestions.filter(q => 
-    q.unitId === unitId || q.unitId.startsWith(subject.id.split('-')[1].slice(0, 4))
-  );
-
-  const filteredQuestions = unitQuestions.filter(q =>
-    selectedDifficulty === 'all' || q.difficulty === selectedDifficulty
-  );
-
-  const handleAIHelp = (question: Question) => {
-    setCurrentQuestion(question);
-    setIsAIModalOpen(true);
-  };
-
-  const handleNextQuestion = () => {
-    setQuestionIndex((prev) => (prev + 1) % filteredQuestions.length);
-  };
-
-  const handleShuffle = () => {
-    setQuestionIndex(Math.floor(Math.random() * filteredQuestions.length));
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
-        {/* Back Button */}
-        <Link 
-          to={`/subjects/${subject.id}`} 
-          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to {subject.shortTitle}
-        </Link>
-
-        {/* Unit Header */}
-        <div className="glass-card p-6 mb-8 animate-fade-up">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <Badge variant="secondary" className="mb-2">
-                {subject.icon} {subject.shortTitle}
-              </Badge>
-              <h1 className="text-2xl font-bold mb-2">{unit.title}</h1>
-              <p className="text-muted-foreground">{unit.description}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Progress</div>
-                <div className="text-xl font-bold text-primary">{unit.progress}%</div>
-              </div>
-              <div className="w-24">
-                <ProgressBar progress={unit.progress} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mb-6 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filter:</span>
-          </div>
-          
-          <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Difficulties</SelectItem>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" size="sm" onClick={handleShuffle} className="gap-2">
-            <Shuffle className="h-4 w-4" />
-            Shuffle
-          </Button>
-
-          <div className="ml-auto text-sm text-muted-foreground">
-            Question {questionIndex + 1} of {filteredQuestions.length}
-          </div>
-        </div>
-
-        {/* Question Display */}
-        {filteredQuestions.length > 0 ? (
-          <div className="max-w-3xl mx-auto">
-            <QuestionCard 
-              question={filteredQuestions[questionIndex]} 
-              onAIHelp={handleAIHelp}
-            />
-            
-            <div className="flex justify-center mt-6">
-              <Button onClick={handleNextQuestion} variant="outline" className="gap-2">
-                Next Question
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-12 glass-card">
+  if (unitQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <BluebookHeader
+          subjectTitle={subject.shortTitle}
+          unitTitle={unit.title}
+          currentQuestion={0}
+          totalQuestions={0}
+          isMarkedForReview={false}
+          onToggleMarkReview={() => {}}
+          onShowDirections={() => {}}
+        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
             <p className="text-muted-foreground mb-4">
-              No questions available for this unit yet. Check back soon!
+              No questions available for this unit yet.
             </p>
             <Link to={`/subjects/${subject.id}`}>
               <Button variant="outline">Back to Units</Button>
             </Link>
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
 
-        {/* AI Tutor Modal */}
-        <AITutorModal 
-          isOpen={isAIModalOpen}
-          onClose={() => setIsAIModalOpen(false)}
-          question={currentQuestion}
+  const activeQuestion = unitQuestions[questionIndex];
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Bluebook Header */}
+      <BluebookHeader
+        subjectTitle={subject.shortTitle}
+        unitTitle={unit.title}
+        currentQuestion={questionIndex + 1}
+        totalQuestions={unitQuestions.length}
+        isMarkedForReview={isMarkedForReview}
+        onToggleMarkReview={toggleMarkForReview}
+        onShowDirections={() => setIsDirectionsOpen(true)}
+      />
+
+      {/* Back Link (subtle) */}
+      <div className="border-b bg-muted/30">
+        <div className="container mx-auto px-4 py-2">
+          <Link 
+            to={`/subjects/${subject.id}`} 
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            Exit to {subject.shortTitle}
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="flex-1 container mx-auto px-4 py-6 pb-24">
+        <BluebookQuestionCard
+          question={activeQuestion}
+          questionNumber={questionIndex + 1}
+          onAIHelp={handleAIHelp}
+          onAnswered={handleAnswered}
         />
       </main>
+
+      {/* Bottom Navigation */}
+      <BluebookBottomNav
+        currentQuestion={questionIndex + 1}
+        totalQuestions={unitQuestions.length}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onOpenQuestionMenu={() => setIsQuestionMenuOpen(true)}
+        canGoBack={questionIndex > 0}
+        canGoForward={questionIndex < unitQuestions.length - 1}
+      />
+
+      {/* Question Grid Modal */}
+      <QuestionGridModal
+        isOpen={isQuestionMenuOpen}
+        onClose={() => setIsQuestionMenuOpen(false)}
+        questionStatuses={questionStatuses}
+        currentQuestion={questionIndex + 1}
+        onSelectQuestion={handleSelectQuestion}
+      />
+
+      {/* Directions Modal */}
+      <DirectionsModal
+        isOpen={isDirectionsOpen}
+        onClose={() => setIsDirectionsOpen(false)}
+        subjectTitle={subject.title}
+      />
+
+      {/* AI Tutor Modal */}
+      <AITutorModal 
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        question={currentQuestion}
+      />
     </div>
   );
 }

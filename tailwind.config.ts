@@ -58,6 +58,13 @@ export default {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        bluebook: {
+          navy: "hsl(var(--bluebook-navy))",
+          "navy-light": "hsl(var(--bluebook-navy-light))",
+          blue: "hsl(var(--bluebook-blue))",
+          gray: "hsl(var(--bluebook-gray))",
+          answered: "hsl(var(--bluebook-answered))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
