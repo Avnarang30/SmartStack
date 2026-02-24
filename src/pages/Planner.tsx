@@ -206,10 +206,10 @@ export default function Planner() {
 
               <div className="space-y-4">
                 {[
-                  { time: '9:00 AM', task: 'AP Chemistry - Unit 1 Review', duration: '45 min', subject: 'ap-chemistry', done: true },
-                  { time: '10:00 AM', task: 'AP Calculus - Practice Problems', duration: '60 min', subject: 'ap-calculus-ab', done: true },
-                  { time: '2:00 PM', task: 'AP Biology - DNA Replication', duration: '45 min', subject: 'ap-biology', done: false },
-                  { time: '4:00 PM', task: 'APUSH - Period 5 Essay Prep', duration: '30 min', subject: 'ap-us-history', done: false },
+                  { time: '9:00 AM', task: 'AP Micro - Unit 1: Basic Economic Concepts', duration: '45 min', subject: 'ap-microeconomics', done: true },
+                  { time: '10:00 AM', task: 'AP Micro - Supply & Demand Practice', duration: '60 min', subject: 'ap-microeconomics', done: true },
+                  { time: '2:00 PM', task: 'AP Micro - Cost Curves Review', duration: '45 min', subject: 'ap-microeconomics', done: false },
+                  { time: '4:00 PM', task: 'AP Micro - Market Structures Essay Prep', duration: '30 min', subject: 'ap-microeconomics', done: false },
                 ].map((item, index) => {
                   const subject = subjects.find(s => s.id === item.subject);
                   return (
@@ -302,7 +302,7 @@ export default function Planner() {
               
               <div className="space-y-3">
                 {[
-                  { text: 'AP Chemistry exam in 4 months', type: 'warning' },
+                  { text: 'AP Micro exam in 4 months', type: 'warning' },
                   { text: 'Review flashcards before bed', type: 'info' },
                   { text: 'Weekly practice test on Saturday', type: 'info' },
                 ].map((reminder, index) => (
