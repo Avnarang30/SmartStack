@@ -94,9 +94,9 @@ export default function Landing() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up" style={{ animationDelay: '0.3s' }}>
-              <Link to="/dashboard">
+              <Link to="/auth">
                 <Button variant="hero" size="xl" className="gap-2 w-full sm:w-auto">
-                  Start Practicing Free
+                  Get Started
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
@@ -236,7 +236,7 @@ export default function Landing() {
               <p className="text-primary-foreground/80 mb-8 max-w-xl mx-auto">
                 Start practicing today and join the thousands of students who've scored 5s with SmartStack.
               </p>
-              <Link to="/dashboard">
+              <Link to="/auth">
                 <Button variant="hero-outline" size="xl" className="gap-2">
                   Get Started Free
                   <ArrowRight className="h-5 w-5" />

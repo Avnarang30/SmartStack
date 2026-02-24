@@ -70,9 +70,11 @@ export function Navbar() {
                 <Settings className="h-5 w-5" />
               </Button>
             </Link>
-            <Button variant="hero" size="sm">
-              Get Started
-            </Button>
+            <Link to="/auth">
+              <Button variant="hero" size="sm">
+                Get Started
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
