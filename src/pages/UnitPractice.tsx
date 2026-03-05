@@ -7,7 +7,9 @@ import { QuestionGridModal } from '@/components/bluebook/QuestionGridModal';
 import { DirectionsModal } from '@/components/bluebook/DirectionsModal';
 import { AITutorModal } from '@/components/AITutorModal';
 import { Button } from '@/components/ui/button';
-import { subjects, sampleQuestions, type Question } from '@/data/subjects';
+import { Skeleton } from '@/components/ui/skeleton';
+import { subjects } from '@/data/subjects';
+import { useUnitQuestions, type CsvQuestion } from '@/hooks/useCsvQuestions';
 import { ChevronLeft } from 'lucide-react';
 
 interface QuestionState {
@@ -22,30 +24,19 @@ export default function UnitPractice() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isQuestionMenuOpen, setIsQuestionMenuOpen] = useState(false);
   const [isDirectionsOpen, setIsDirectionsOpen] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | undefined>();
+  const [currentQuestion, setCurrentQuestion] = useState<CsvQuestion | undefined>();
   const [questionStates, setQuestionStates] = useState<Map<number, QuestionState>>(new Map());
+
+  const { unitQuestions, loading } = useUnitQuestions(unitId);
 
   // Find the unit and its subject
   let unit = null;
   let subject = null;
   for (const s of subjects) {
     const u = s.units.find(u => u.id === unitId);
-    if (u) {
-      unit = u;
-      subject = s;
-      break;
-    }
+    if (u) { unit = u; subject = s; break; }
   }
 
-  // Filter questions based on unit
-  const unitQuestions = useMemo(() => {
-    if (!subject) return [];
-    return sampleQuestions.filter(q => 
-      q.unitId === unitId || q.unitId.startsWith(subject.id.split('-')[1].slice(0, 4))
-    );
-  }, [unitId, subject]);
-
-  // Build question statuses for the grid
   const questionStatuses = useMemo(() => {
     return unitQuestions.map((_, index) => {
       const state = questionStates.get(index);
@@ -78,25 +69,9 @@ export default function UnitPractice() {
     });
   };
 
-  const handleAIHelp = (question: Question) => {
+  const handleAIHelp = (question: CsvQuestion) => {
     setCurrentQuestion(question);
     setIsAIModalOpen(true);
-  };
-
-  const handlePrevious = () => {
-    if (questionIndex > 0) {
-      setQuestionIndex(questionIndex - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (questionIndex < unitQuestions.length - 1) {
-      setQuestionIndex(questionIndex + 1);
-    }
-  };
-
-  const handleSelectQuestion = (index: number) => {
-    setQuestionIndex(index);
   };
 
   if (!unit || !subject) {
@@ -112,23 +87,27 @@ export default function UnitPractice() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        <BluebookHeader subjectTitle={subject.shortTitle} unitTitle={unit.title} currentQuestion={0} totalQuestions={0} isMarkedForReview={false} onToggleMarkReview={() => {}} onShowDirections={() => {}} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-full max-w-3xl mx-auto px-4 space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (unitQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col">
-        <BluebookHeader
-          subjectTitle={subject.shortTitle}
-          unitTitle={unit.title}
-          currentQuestion={0}
-          totalQuestions={0}
-          isMarkedForReview={false}
-          onToggleMarkReview={() => {}}
-          onShowDirections={() => {}}
-        />
+        <BluebookHeader subjectTitle={subject.shortTitle} unitTitle={unit.title} currentQuestion={0} totalQuestions={0} isMarkedForReview={false} onToggleMarkReview={() => {}} onShowDirections={() => {}} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center bg-white p-8 rounded-lg shadow-sm">
-            <p className="text-gray-600 mb-4">
-              No questions available for this unit yet.
-            </p>
+            <p className="text-gray-600 mb-4">No questions available for this unit yet.</p>
             <Link to={`/subjects/${subject.id}`}>
               <Button variant="outline" className="border-gray-300">Back to Units</Button>
             </Link>
@@ -142,7 +121,6 @@ export default function UnitPractice() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Bluebook Header */}
       <BluebookHeader
         subjectTitle={subject.shortTitle}
         unitTitle={unit.title}
@@ -153,20 +131,15 @@ export default function UnitPractice() {
         onShowDirections={() => setIsDirectionsOpen(true)}
       />
 
-      {/* Subtle Exit Link */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-2">
-          <Link 
-            to={`/subjects/${subject.id}`} 
-            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-          >
+          <Link to={`/subjects/${subject.id}`} className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
             <ChevronLeft className="h-3 w-3" />
             Exit to {subject.shortTitle}
           </Link>
         </div>
       </div>
 
-      {/* Main Content Area - Gray Background */}
       <main className="flex-1 py-6 pb-24">
         <div className="container mx-auto px-4">
           <div key={activeQuestion.id} className="animate-fade-in">
@@ -180,39 +153,27 @@ export default function UnitPractice() {
         </div>
       </main>
 
-      {/* Bottom Navigation */}
       <BluebookBottomNav
         currentQuestion={questionIndex + 1}
         totalQuestions={unitQuestions.length}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
+        onPrevious={() => questionIndex > 0 && setQuestionIndex(questionIndex - 1)}
+        onNext={() => questionIndex < unitQuestions.length - 1 && setQuestionIndex(questionIndex + 1)}
         onOpenQuestionMenu={() => setIsQuestionMenuOpen(true)}
         canGoBack={questionIndex > 0}
         canGoForward={questionIndex < unitQuestions.length - 1}
       />
 
-      {/* Question Grid Modal */}
       <QuestionGridModal
         isOpen={isQuestionMenuOpen}
         onClose={() => setIsQuestionMenuOpen(false)}
         questionStatuses={questionStatuses}
         currentQuestion={questionIndex + 1}
-        onSelectQuestion={handleSelectQuestion}
+        onSelectQuestion={setQuestionIndex}
       />
 
-      {/* Directions Modal */}
-      <DirectionsModal
-        isOpen={isDirectionsOpen}
-        onClose={() => setIsDirectionsOpen(false)}
-        subjectTitle={subject.title}
-      />
+      <DirectionsModal isOpen={isDirectionsOpen} onClose={() => setIsDirectionsOpen(false)} subjectTitle={subject.title} />
 
-      {/* AI Tutor Modal */}
-      <AITutorModal 
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
-        question={currentQuestion}
-      />
+      <AITutorModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} question={currentQuestion ? { id: currentQuestion.id, unitId: currentQuestion.unitId, text: currentQuestion.text, choices: currentQuestion.choices, correctAnswer: 0, difficulty: 'medium', explanation: '', topic: '' } : undefined} />
     </div>
   );
 }
