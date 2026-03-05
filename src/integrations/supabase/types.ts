@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_question_answers: {
+        Row: {
+          correct_answer_index: number
+          created_at: string
+          explanation: string | null
+          id: string
+          question_hash: string
+        }
+        Insert: {
+          correct_answer_index: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          question_hash: string
+        }
+        Update: {
+          correct_answer_index?: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          question_hash?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
