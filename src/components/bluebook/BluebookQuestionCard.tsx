@@ -85,7 +85,13 @@ export function BluebookQuestionCard({
         body: { question: question.text, choices: question.choices },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        // Check if it's a rate limit or other HTTP error
+        const errMsg = response.data?.error || response.error?.message || 'Failed to check answer';
+        alert(errMsg);
+        setIsChecking(false);
+        return;
+      }
 
       const { correct_answer_index, explanation: aiExplanation } = response.data;
       setCorrectAnswerIndex(correct_answer_index);
