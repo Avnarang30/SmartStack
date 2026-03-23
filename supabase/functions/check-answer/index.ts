@@ -5,19 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function callGemini(apiKey: string, body: string, retries = 3): Promise<Response> {
-  for (let i = 0; i < retries; i++) {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body,
-    });
-    if (response.status === 429 && i < retries - 1) {
-      const delay = (i + 1) * 2000; // 2s, 4s backoff
-      console.log(`Rate limited, retrying in ${delay}ms (attempt ${i + 2}/${retries})`);
+async function callWithRetry(url: string, headers: Record<string, string>, body: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    const response = await fetch(url, { method: "POST", headers, body });
+    if (response.status === 429 && i < retries) {
+      const delay = (i + 1) * 2000;
+      console.log(`Rate limited, retrying in ${delay}ms (attempt ${i + 2}/${retries + 1})`);
       await new Promise(r => setTimeout(r, delay));
       continue;
     }
@@ -31,12 +24,10 @@ serve(async (req) => {
 
   try {
     const { question, choices } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const choicesText = choices.map((c: string, i: number) => `${String.fromCharCode(65 + i)}) ${c}`).join("\n");
 
-    const response = await callGemini(GEMINI_API_KEY, JSON.stringify({
+    const requestBody = JSON.stringify({
       model: "gemini-2.0-flash",
       messages: [
         {
@@ -73,22 +64,58 @@ serve(async (req) => {
         }
       ],
       tool_choice: { type: "function", function: { name: "submit_answer" } },
-    }));
+    });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // Try Gemini API key first, fall back to Lovable AI gateway
+    let response: Response | null = null;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+    if (GEMINI_API_KEY) {
+      try {
+        response = await callWithRetry(
+          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+          { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+          requestBody
+        );
+        if (!response.ok) {
+          console.log(`Gemini API failed with ${response.status}, falling back to Lovable AI`);
+          response = null;
+        }
+      } catch (e) {
+        console.log("Gemini API error, falling back to Lovable AI:", e);
+        response = null;
       }
-      const t = await response.text();
-      console.error("Gemini API error:", response.status, t);
-      throw new Error("Gemini API error");
+    }
+
+    if (!response) {
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) throw new Error("No AI API key available");
+
+      // Update model name for Lovable gateway
+      const lovableBody = JSON.parse(requestBody);
+      lovableBody.model = "google/gemini-2.5-flash-lite";
+
+      response = await callWithRetry(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        JSON.stringify(lovableBody)
+      );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const t = await response.text();
+        console.error("Lovable AI error:", response.status, t);
+        throw new Error("AI gateway error");
+      }
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
+
     if (!toolCall) {
       throw new Error("No tool call in AI response");
     }
