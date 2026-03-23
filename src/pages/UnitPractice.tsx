@@ -173,7 +173,7 @@ export default function UnitPractice() {
 
       <DirectionsModal isOpen={isDirectionsOpen} onClose={() => setIsDirectionsOpen(false)} subjectTitle={subject.title} />
 
-      <AITutorModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} question={currentQuestion ? { id: currentQuestion.id, unitId: currentQuestion.unitId, text: currentQuestion.text, choices: currentQuestion.choices, correctAnswer: 0, difficulty: 'medium', explanation: '', topic: '' } : undefined} />
+      <AITutorModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} question={currentQuestion} />
     </div>
   );
 }
