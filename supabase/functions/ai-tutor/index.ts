@@ -25,27 +25,53 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { question, choices, studentAttempt, mode } = await req.json();
+    const { question, choices, studentAttempt, mode, message, subject } = await req.json();
 
-    const choicesText = choices.map((c: string, i: number) => `${String.fromCharCode(65 + i)}) ${c}`).join("\n");
+    const messages = (() => {
+      if (typeof message === "string" && message.trim().length > 0) {
+        const subjectContext = typeof subject === "string" && subject.trim().length > 0
+          ? `Subject context: ${subject.trim()}.`
+          : "";
 
-    const systemPrompts: Record<string, string> = {
-      hint: "You are an AP Microeconomics tutor. Give a helpful hint for this question WITHOUT revealing the answer. Guide the student's thinking with 2-3 sentences.",
-      explanation: "You are an AP Microeconomics tutor. Provide a clear step-by-step explanation of how to solve this question. Walk through the reasoning for each answer choice and explain why the correct one is right. Use numbered steps.",
-      concept: "You are an AP Microeconomics tutor. Provide a concept review relevant to this question. Explain the key economic concepts, definitions, and principles being tested. Include real-world examples where helpful.",
-    };
+        return [
+          {
+            role: "system",
+            content:
+              "You are a supportive AP tutor. Give accurate, concise, step-by-step help tailored to the student's exact question. Avoid generic templates. If helpful, end with one brief check-for-understanding question.",
+          },
+          {
+            role: "user",
+            content: `${subjectContext}\nStudent question: ${message.trim()}`,
+          },
+        ];
+      }
 
-    const systemPrompt = systemPrompts[mode] || systemPrompts.hint;
+      if (typeof question !== "string" || !Array.isArray(choices) || choices.length === 0) {
+        throw new Error("Invalid request: provide either 'message' or question + choices");
+      }
 
-    let userContent = `Question: ${question}\n\nChoices:\n${choicesText}`;
-    if (studentAttempt) {
-      userContent += `\n\nStudent's thinking: ${studentAttempt}`;
-    }
+      const choicesText = choices
+        .map((c: string, i: number) => `${String.fromCharCode(65 + i)}) ${c}`)
+        .join("\n");
 
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
-    ];
+      const systemPrompts: Record<string, string> = {
+        hint: "You are an AP Microeconomics tutor. Give a helpful hint for this question WITHOUT revealing the answer. Guide the student's thinking with 2-3 sentences.",
+        explanation: "You are an AP Microeconomics tutor. Provide a clear step-by-step explanation of how to solve this question. Walk through the reasoning for each answer choice and explain why the correct one is right. Use numbered steps.",
+        concept: "You are an AP Microeconomics tutor. Provide a concept review relevant to this question. Explain the key economic concepts, definitions, and principles being tested. Include real-world examples where helpful.",
+      };
+
+      const systemPrompt = systemPrompts[mode] || systemPrompts.hint;
+      let userContent = `Question: ${question}\n\nChoices:\n${choicesText}`;
+
+      if (studentAttempt) {
+        userContent += `\n\nStudent's thinking: ${studentAttempt}`;
+      }
+
+      return [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ];
+    })();
 
     // Try Gemini first, fallback to Lovable AI
     let response: Response | null = null;
@@ -63,6 +89,13 @@ serve(async (req) => {
       if (!LOVABLE_API_KEY) throw new Error("No AI API key available");
       response = await callAI(LOVABLE_API_KEY, "https://ai.gateway.lovable.dev/v1/chat/completions", messages);
       if (!response.ok) {
+        if (response.status === 429 || response.status === 402) {
+          const text = await response.text();
+          return new Response(text || JSON.stringify({ error: response.status === 429 ? "Rate limited, please try again shortly." : "Payment required for AI usage." }), {
+            status: response.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const t = await response.text();
         console.error("AI error:", response.status, t);
         throw new Error("AI error");

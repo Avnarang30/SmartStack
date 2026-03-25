@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { subjects } from '@/data/subjects';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Sparkles, 
   Send, 
@@ -43,12 +44,17 @@ export default function AITutor() {
   ];
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    const messageText = inputMessage.trim();
+    if (!messageText) return;
+
+    const selectedSubjectTitle = selectedSubject
+      ? subjects.find((s) => s.id === selectedSubject)?.title ?? ''
+      : '';
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputMessage,
+      content: messageText,
       timestamp: new Date(),
     };
 
@@ -56,18 +62,36 @@ export default function AITutor() {
     setInputMessage('');
     setIsLoading(true);
 
-    // Simulate AI response (placeholder for Gemini API)
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-tutor', {
+        body: {
+          message: messageText,
+          subject: selectedSubjectTitle,
+        },
+      });
 
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: `Great question! Let me help you understand this better.\n\nBased on your question about "${inputMessage.slice(0, 50)}...", here's a detailed explanation:\n\n1. **Key Concept**: This relates to fundamental principles in ${selectedSubject ? subjects.find(s => s.id === selectedSubject)?.title || 'your subject' : 'AP studies'}.\n\n2. **Step-by-Step Breakdown**:\n   - First, consider the underlying theory\n   - Then, apply it to specific examples\n   - Finally, practice with similar problems\n\n3. **Pro Tip**: Focus on understanding the "why" behind each step, not just the "how".\n\nWould you like me to provide a practice problem to test your understanding?`,
-      timestamp: new Date(),
-    };
+      if (error) throw error;
 
-    setMessages(prev => [...prev, assistantMessage]);
-    setIsLoading(false);
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data?.content || 'I could not generate a response. Please try again.',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('AI Tutor chat error:', error);
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, I could not process that right now. Please try again in a moment.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {
